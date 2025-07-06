@@ -43,6 +43,14 @@ local function followAndHoldE(root, model)
         end
         humanoid:MoveTo(root.Position + Vector3.new(0, 0, -2))
     end)
+
+    task.delay(6, function()
+        if conn then
+            holding = false
+            conn:Disconnect()
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end
+    end)
 end
 
 task.spawn(function()
@@ -65,10 +73,6 @@ task.spawn(function()
                         followAndHoldE(root, model)
                         repeat task.wait() until not model or not model.Parent
                         task.wait(0.5)
-
-                        -- Wait
-                        local waitStart = Cash.Value
-                        repeat task.wait(1) until Cash.Value >= waitStart + 500
                     end
                 end
             end
@@ -77,6 +81,9 @@ task.spawn(function()
         end
     end
 end)
+
+_G.Sell = true
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -88,7 +95,7 @@ repeat task.wait() until player.Character and player.Character:FindFirstChild("H
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 
 task.spawn(function()
-	while true do
+	while _G.Sell do
 		local character = player.Character
 		local hrp = character and character:FindFirstChild("HumanoidRootPart")
 		if hrp then
@@ -97,6 +104,7 @@ task.spawn(function()
 				local purchases = base:FindFirstChild("Purchases")
 				local plotBlock = purchases and purchases:FindFirstChild("PlotBlock")
 				local hitbox = plotBlock and plotBlock:FindFirstChild("Hitbox")
+
 				if hitbox and hitbox:IsA("BasePart") then
 					local distance = (hrp.Position - hitbox.Position).Magnitude
 					if distance <= 100 then
@@ -114,7 +122,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	while true do
+	while _G.Sell do
 		for i = 1, 10 do
 			pcall(function()
 				ReplicatedStorage:WaitForChild("Packages")
@@ -127,7 +135,6 @@ task.spawn(function()
 		task.wait(5)
 	end
 end)
-
 
 if not getgenv().Config or not getgenv().Config["Base Lock"] then return end
 
@@ -365,4 +372,111 @@ end
 while true do
     pcall(scanNearbyBrainrots)
     task.wait(10)
+end
+
+--//Webhook
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local BrainrotRarity = {
+    ["Common"] = {
+        "Noobini Pizzanini", "Tim Cheese", "Lirili Larila"
+    },
+    ["Rare"] = {
+        "Fluriflura", "Svinina Bombardino", "Tung Tung Tung Sahur",
+        "Gangster Footera", "Boneca Ambalabu", "Capachino Assassino",
+        "Ta Ta Ta Ta Sahur", "Trulimero Trulicinea"
+    },
+    ["Legendary"] = {
+        "Bananita Dolphinita", "Brr Brr Patapim", "Burbaloni Loliloli",
+        "Chef Crabracadebra", "Frigo Camelo", "Bombardiro Crocodilo",
+        "Cocofanto Elefanto"
+    },
+    ["Mythic"] = {
+        "Tralalero Tralala", "La Grande Combinasion", "La Vacca Saturno Saturnita",
+        "Graipuss Medussi", "Los Tralaleritos"
+    }
+}
+
+local function getRarity(name)
+    for rarity, list in pairs(BrainrotRarity) do
+        if table.find(list, name) then
+            return rarity
+        end
+    end
+    return "Unknown"
+end
+
+local function getNearbyBrainrots()
+    local result = {}
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return result end
+
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model:FindFirstChildWhichIsA("BasePart") then
+            local dist = (model:GetPivot().Position - hrp.Position).Magnitude
+            if dist <= 30 then
+                local name = model.Name
+                local rarity = getRarity(name)
+                table.insert(result, string.format("[%s] %s", rarity, name))
+            end
+        end
+    end
+
+    return result
+end
+
+local function hasRare(brainrotList)
+    for _, line in ipairs(brainrotList) do
+        if line:find("%[Rare%]") or line:find("%[Legendary%]") or line:find("%[Mythic%]") then
+            return true
+        end
+    end
+    return false
+end
+
+local function sendWebhook()
+    if not getgenv().Config or not getgenv().Config["Webhook"] or not getgenv().Config["Webhook"]["Enable"] then return end
+
+    local brainrotList = getNearbyBrainrots()
+    if #brainrotList == 0 then return end
+
+    local user = LocalPlayer.Name
+    local display = LocalPlayer.DisplayName or "Unknown"
+    local cash = LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Cash")
+    cash = cash and cash.Value or 0
+
+    local ping = ""
+    if getgenv().Config["Webhook"]["PingEveryoneWhenRare"] and hasRare(brainrotList) then
+        ping = "@everyone\n"
+    end
+
+    local content = {
+        ["content"] = ping,
+        ["username"] = "Strawberry Cat Hub",
+        ["embeds"] = {{
+            ["title"] = "All Brainrot",
+            ["description"] = table.concat(brainrotList, "\n"),
+            ["fields"] = {
+                { ["name"] = "👤 Player", ["value"] = string.format("**%s** (%s)", display, user), ["inline"] = true },
+                { ["name"] = "💰 Cash", ["value"] = tostring(cash), ["inline"] = true }
+            },
+            ["color"] = 65280
+        }}
+    }
+
+    pcall(function()
+        request({
+            Url = getgenv().Config["Webhook"]["Url"],
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode(content)
+        })
+    end)
+end
+
+while true do
+    sendWebhook()
+    task.wait((getgenv().Config["Webhook"]["Delay"] or 1) * 60)
 end
