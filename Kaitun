@@ -274,22 +274,25 @@ local function startLawRaid()
     fireclickdetector(btn) task.wait(0.2) fireclickdetector(btn)
 
     task.spawn(function()
-        while task.wait(0.3) do
+        while task.wait(0.2) do
             local boss
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("Model") and v.Name == "Order" and v:FindFirstChild("HumanoidRootPart") then
                     boss = v break
                 end
             end
-            local hum = getChar():FindFirstChild("Humanoid")
+
+            local char = getChar()
+            local hum = char and char:FindFirstChild("Humanoid")
             if not boss or not boss:FindFirstChild("HumanoidRootPart") or not hum or hum.Health <= 0 then
                 break
             end
 
             if hum.Health < 1000 then
                 getHRP().CFrame = CFrame.new(getHRP().Position.X, 500, getHRP().Position.Z)
-            elseif hum.Health >= 8000 then
-                tweenTo(boss.HumanoidRootPart.Position + Vector3.new(0,15,0))
+            else
+                local bossPos = boss.HumanoidRootPart.Position
+                tweenTo(bossPos + Vector3.new(0, 12, 0))
             end
         end
     end)
