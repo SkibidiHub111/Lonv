@@ -107,29 +107,29 @@ task.wait(5)
 local function sendWebhook(statusText)
     local cfg = getgenv().AutoCyborg["Webhook"]
     if not cfg or not cfg["Enable"] or cfg["Url"] == "" then return end
-    local content = ""  
-    if cfg["PingEveryoneWhenDone"] and statusText:find("Done all") then  
-        content = "@everyone"  
-    end  
-    local data = {  
-        ["username"] = "Crystal Hub",  
-        ["embeds"] = {{  
-            ["title"] = "Crystal Hub Auto Cyborg",  
-            ["color"] = 65280,  
-            ["fields"] = {  
-                {["name"] = "User", ["value"] = LocalPlayer.Name, ["inline"] = false},  
-                {["name"] = "Status", ["value"] = statusText, ["inline"] = false}  
-            }  
-        }},  
-        ["content"] = content  
-    }  
-    pcall(function()  
-        request({  
-            Url = cfg["Url"],  
-            Body = HttpService:JSONEncode(data),  
-            Method = "POST",  
-            Headers = {["Content-Type"] = "application/json"}  
-        })  
+    local content = ""
+    if cfg["PingEveryoneWhenDone"] and statusText:find("Done all") then
+        content = "@everyone"
+    end
+    local data = {
+        ["username"] = "Crystal Hub",
+        ["embeds"] = {{
+            ["title"] = "Crystal Hub Auto Cyborg",
+            ["color"] = 65280,
+            ["fields"] = {
+                {["name"] = "User", ["value"] = LocalPlayer.Name, ["inline"] = false},
+                {["name"] = "Status", ["value"] = statusText, ["inline"] = false}
+            }
+        }},
+        ["content"] = content
+    }
+    pcall(function()
+        request({
+            Url = cfg["Url"],
+            Body = HttpService:JSONEncode(data),
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"}
+        })
     end)
 end
 
@@ -217,7 +217,7 @@ local function tweenTo(targetPos)
             done = true
             return
         end
-        hrp.Velocity = Vector3.new(0,0,0) -- ép đứng yên theo tween
+        hrp.Velocity = Vector3.new(0,0,0)
     end)
 
     repeat task.wait() until done
@@ -274,18 +274,22 @@ local function startLawRaid()
     fireclickdetector(btn) task.wait(0.2) fireclickdetector(btn)
 
     task.spawn(function()
-        while task.wait(0.5) do
+        while task.wait(0.3) do
             local boss
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("Model") and v.Name == "Order" and v:FindFirstChild("HumanoidRootPart") then
                     boss = v break
                 end
             end
-            if boss and boss:FindFirstChild("HumanoidRootPart") then
-                local hum = getChar():FindFirstChild("Humanoid")
-                if hum and hum.Health > 0 then
-                    getHRP().CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,15,0)
-                else break end
+            local hum = getChar():FindFirstChild("Humanoid")
+            if not boss or not boss:FindFirstChild("HumanoidRootPart") or not hum or hum.Health <= 0 then
+                break
+            end
+
+            if hum.Health < 1000 then
+                getHRP().CFrame = CFrame.new(getHRP().Position.X, 500, getHRP().Position.Z)
+            elseif hum.Health >= 8000 then
+                tweenTo(boss.HumanoidRootPart.Position + Vector3.new(0,15,0))
             end
         end
     end)
@@ -295,8 +299,10 @@ local function startLawRaid()
         while task.wait(2) do
             if LocalPlayer.Backpack:FindFirstChild("Core Brain") or LocalPlayer.Character:FindFirstChild("Core Brain") then
                 fireclickdetector(btn) task.wait(0.2) fireclickdetector(btn)
-                UpdateStatus("Got Core Brain, done all", Color3.fromRGB(0,255,0))
-                sendWebhook("Got Core Brain, done all")
+                local args = {"CyborgTrainer","Buy"}
+                ReplicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+                UpdateStatus("Got Core Brain & Bought Cyborg Race - Done!", Color3.fromRGB(0,255,0))
+                sendWebhook("Got Core Brain & Bought Cyborg Race - Done all")
                 break
             end
         end
@@ -327,7 +333,6 @@ task.spawn(function()
         end)
 
         if not hasKey() then
-
             pcall(function()
                 fireclickdetector(btn)
                 task.wait(0.1)
@@ -358,7 +363,6 @@ task.spawn(function()
                 startLawRaid()
             end
         else
-
             local keyTool = LocalPlayer.Backpack:FindFirstChild("Fist of Darkness")
             if keyTool and not LocalPlayer.Character:FindFirstChild("Fist of Darkness") then
                 keyTool.Parent = LocalPlayer.Character
